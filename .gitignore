@@ -1,0 +1,15 @@
+# Python leftovers
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Shortlist local data and build
+**/applications.json
+Shortlist/bin/
+Shortlist/obj/
+Shortlist/.vs/
+
+# OS / editor
+.DS_Store
+*.user
