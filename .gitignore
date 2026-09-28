@@ -13,3 +13,12 @@ Shortlist/.vs/
 # OS / editor
 .DS_Store
 *.user
+
+# Learning plans (local only, not GitHub)
+kubernetes-learning-path.md
+kubernetes-learning-path.pdf
+cs-to-kubernetes-learning-path.pdf
+beacon-project.md
+beacon-project.pdf
+export_path_pdf.py
+export_beacon_pdf.py
