@@ -1,4 +1,5 @@
-﻿using Shortlist.Api;
+﻿using Microsoft.AspNetCore.Identity;
+using Shortlist.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 //Web sunucusunu kuracak olan nesne henüz dinlenmiyor
@@ -75,7 +76,55 @@ app.MapPost("/applications/{id}/status", (string id, StatusUpdate body) =>
     item.Status = to;
     Store.Save(items);
     return Results.Ok(item);
-}); 
+});
+
+app.MapPost("/register", (RegisterRequest body) =>
+{
+    var email = body.Email?.Trim().ToLowerInvariant();
+    var password = body.Password;
+
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        return Results.BadRequest("email and password are required");
+
+    var users = UserStore.Load();
+    if (users.Exists(u => u.Email == email))
+        return Results.BadRequest("email already registered");
+
+    var user = new UserRecord
+    {
+        Id = Guid.NewGuid().ToString("N"),
+        Email = email
+    };
+
+    var hasher = new PasswordHasher<UserRecord>();
+    user.PasswordHash = hasher.HashPassword(user, password);
+
+    users.Add(user);
+    UserStore.Save(users);
+
+    return Results.Created($"/users/{user.Id}", new { user.Id, user.Email });
+});
+
+app.MapPost("/login", (RegisterRequest body) =>
+{
+    var email = body.Email?.Trim().ToLowerInvariant();
+    var password = body.Password;
+
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        return Results.BadRequest("email and password are required");
+
+    var users = UserStore.Load();
+    var user = users.Find(u => u.Email == email);
+    if (user is null)
+        return Results.Json(new { message = "invalid email or password" }, statusCode: 401);
+
+    var hasher = new PasswordHasher<UserRecord>();
+    var result = hasher.VerifyHashedPassword(user, user.PasswordHash, password);
+    if (result == PasswordVerificationResult.Failed)
+        return Results.Json(new { message = "invalid email or password" }, statusCode: 401);
+
+    return Results.Ok(new { user.Id, user.Email });
+});
 
 app.Run();
 //dinlemeye başla buraya kadar gelmeden maplar kayıtlı olur program burda bekler ctrl+c ile kapanır

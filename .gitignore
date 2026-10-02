@@ -6,6 +6,7 @@ venv/
 
 # Shortlist local data and build
 **/applications.json
+**/users.json
 **/bin/
 **/obj/
 **/.vs/
