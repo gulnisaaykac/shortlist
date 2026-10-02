@@ -24,6 +24,15 @@ app.MapGet("/applications", () =>//boş query/body yok
     return Results.Ok(items);//http 200 döndürür ve body de items json olarak döner
 });
 
+app.MapGet("/applications/{id}", (string id) =>
+{
+    var items = Store.Load();
+    var item = items.Find(x => x.Id == id);
+    if (item is null)
+        return Results.NotFound();
+    return Results.Ok(item);
+});
+
 app.MapPost("/applications", (ApplicationRecord body) =>//post ayni url ama body var
 {
     if (string.IsNullOrWhiteSpace(body.Company) || string.IsNullOrWhiteSpace(body.Role))
