@@ -6,9 +6,9 @@ venv/
 
 # Shortlist local data and build
 **/applications.json
-Shortlist/bin/
-Shortlist/obj/
-Shortlist/.vs/
+**/bin/
+**/obj/
+**/.vs/
 
 # OS / editor
 .DS_Store

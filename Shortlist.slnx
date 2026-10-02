@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Shortlist.Api/Shortlist.Api.csproj" />
+  <Project Path="Shortlist/Shortlist.csproj" />
+</Solution>
