@@ -164,6 +164,22 @@ static UserRecord? GetUserFromRequest(HttpRequest request)
     return UserStore.Load().Find(u => u.Id == session.UserId);
 }
 
+app.MapPost("/logout", (HttpRequest request) =>
+{
+    var user = GetUserFromRequest(request);
+    if (user is null)
+        return Results.Unauthorized();
+
+    var header = request.Headers.Authorization.ToString();
+    var token = header["Bearer ".Length..].Trim();
+
+    var sessions = SessionStore.Load();
+    sessions.RemoveAll(s => s.Token == token);
+    SessionStore.Save(sessions);
+
+    return Results.Ok(new { message = "logged out" });
+});
+
 app.Run();
 //dinlemeye başla buraya kadar gelmeden maplar kayıtlı olur program burda bekler ctrl+c ile kapanır
 
