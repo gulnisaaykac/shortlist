@@ -18,49 +18,59 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();//tarayıcıdaki yeşil try it out sayfası için 
 }
 
-app.MapGet("/applications", () =>//boş query/body yok
+app.MapGet("/applications", (HttpRequest request) =>
 {
-    var items = Store.Load();
-    //cli gibi json dosyasından liste yoksa boş liste döndürür
-    return Results.Ok(items);//http 200 döndürür ve body de items json olarak döner
+    var user = GetUserFromRequest(request);
+    if (user is null)
+        return Results.Unauthorized();
+
+    var items = Store.Load().Where(x => x.UserId == user.Id).ToList();
+    return Results.Ok(items);
 });
 
-app.MapGet("/applications/{id}", (string id) =>
+app.MapGet("/applications/{id}", (string id, HttpRequest request) =>
 {
-    var items = Store.Load();
-    var item = items.Find(x => x.Id == id);
+    var user = GetUserFromRequest(request);
+    if (user is null)
+        return Results.Unauthorized();
+
+    var item = Store.Load().Find(x => x.Id == id && x.UserId == user.Id);
     if (item is null)
         return Results.NotFound();
     return Results.Ok(item);
 });
 
-app.MapPost("/applications", (ApplicationRecord body) =>//post ayni url ama body var
+app.MapPost("/applications", (ApplicationRecord body, HttpRequest request) =>
 {
+    var user = GetUserFromRequest(request);
+    if (user is null)
+        return Results.Unauthorized();
+
     if (string.IsNullOrWhiteSpace(body.Company) || string.IsNullOrWhiteSpace(body.Role))
-        //şirket vey rol yok boşluk --->kaydetme
         return Results.BadRequest("Company and Role are required fields.");
-    //http 400 döndürür  cli daki retur1 + hata yazisinin http hali
 
     var items = Store.Load();
-    //mevcut kayıtları al üzerine ekle dosyayı ezme
-    var item = new ApplicationRecord  
-    //cli add ile ayni 
+    var item = new ApplicationRecord
     {
         Id = Guid.NewGuid().ToString("N"),
         Company = body.Company.Trim(),
         Role = body.Role.Trim(),
         Status = "applied",
-        CreatedAt = DateTime.UtcNow.ToString("o")
+        CreatedAt = DateTime.UtcNow.ToString("o"),
+        UserId = user.Id
     };
 
     items.Add(item);
-    //hafıza + disk cli store ile ayni dosya mantığı 
     Store.Save(items);
     return Results.Created($"/applications/{item.Id}", item);
 });
 
-app.MapPost("/applications/{id}/status", (string id, StatusUpdate body) =>
+app.MapPost("/applications/{id}/status", (string id, StatusUpdate body, HttpRequest request) =>
 {
+    var user = GetUserFromRequest(request);
+    if (user is null)
+        return Results.Unauthorized();
+
     var to = body.To?.Trim().ToLowerInvariant();
     var allowed = new[] { "applied", "waiting", "interview", "offer", "rejected" };
 
@@ -68,7 +78,7 @@ app.MapPost("/applications/{id}/status", (string id, StatusUpdate body) =>
         return Results.BadRequest("invalid to. use: applied, waiting, interview, offer, rejected");
 
     var items = Store.Load();
-    var item = items.Find(x => x.Id == id);
+    var item = items.Find(x => x.Id == id && x.UserId == user.Id);
 
     if (item is null)
         return Results.NotFound();
@@ -123,8 +133,36 @@ app.MapPost("/login", (RegisterRequest body) =>
     if (result == PasswordVerificationResult.Failed)
         return Results.Json(new { message = "invalid email or password" }, statusCode: 401);
 
-    return Results.Ok(new { user.Id, user.Email });
+    var token = Guid.NewGuid().ToString("N");
+    var sessions = SessionStore.Load();
+    sessions.Add(new SessionRecord
+    {
+        Token = token,
+        UserId = user.Id,
+        CreatedAt = DateTime.UtcNow.ToString("o")
+    });
+    SessionStore.Save(sessions);
+
+    return Results.Ok(new { user.Id, user.Email, token });
 });
+
+static UserRecord? GetUserFromRequest(HttpRequest request)
+{
+    var header = request.Headers.Authorization.ToString();
+    const string prefix = "Bearer ";
+    if (!header.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        return null;
+
+    var token = header[prefix.Length..].Trim();
+    if (string.IsNullOrWhiteSpace(token))
+        return null;
+
+    var session = SessionStore.Load().Find(s => s.Token == token);
+    if (session is null)
+        return null;
+
+    return UserStore.Load().Find(u => u.Id == session.UserId);
+}
 
 app.Run();
 //dinlemeye başla buraya kadar gelmeden maplar kayıtlı olur program burda bekler ctrl+c ile kapanır

@@ -8,4 +8,5 @@ public sealed class ApplicationRecord
     public string Role { get; set; } = "";
     public string Status { get; set; } = "applied";
     public string CreatedAt { get; set; } = "";
+    public string UserId { get; set; } = "";
 }
